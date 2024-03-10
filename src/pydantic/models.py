@@ -1,5 +1,4 @@
 from typing import Optional
-
 from pydantic import BaseModel
 
 from src.enum.last_state import State

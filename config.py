@@ -8,27 +8,15 @@ class Settings(BaseSettings):
     DB_PASS: str
     DB_NAME: str
 
-    api_id: int
-    api_hash: str
-    bot_token: str
+    API_ID: int
+    API_HASH: str
+    BOT_TOKEN: str
 
     @property
-    def DATABASE_URL_asyncpg(self):
+    def DATABASE_URL(self):
         # postgresql+asyncpg://postgres:postgres@localhost:5432/sa
         return (
             f"postgresql+asyncpg://"
-            f"{self.DB_USER}:"
-            f"{self.DB_PASS}@"
-            f"{self.DB_HOST}:"
-            f"{self.DB_PORT}/"
-            f"{self.DB_NAME}"
-        )
-
-    @property
-    def DATABASE_URL_psycopg(self):
-        # postgresql+psycopg://postgres:postgres@localhost:5432/sa
-        return (
-            f"postgresql+psycopg://"
             f"{self.DB_USER}:"
             f"{self.DB_PASS}@"
             f"{self.DB_HOST}:"

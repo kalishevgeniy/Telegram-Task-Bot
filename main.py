@@ -1,20 +1,18 @@
-from pyrogram import Client, idle
-# from pyrogram.types import BotCommand
+from pyrogram import Client
+from config import settings
 
-from orm.config import settings
+plugins = dict(
+    root="src/plugins/controllers"
+)
 
-plugins = dict(root="src/plugins")
 app = Client(
     name="my_account",
     plugins=plugins,
-    api_id=settings.api_id,
-    api_hash=settings.api_hash,
-    bot_token=settings.bot_token
+    api_id=settings.API_ID,
+    api_hash=settings.API_HASH,
+    bot_token=settings.BOT_TOKEN
 )
 
 print('Starting bot...')
-app.start()
-# app.set_bot_commands(bot_commands)
-idle()
-app.stop()
+app.run()
 print('Bot stopped.')

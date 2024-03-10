@@ -1,35 +1,44 @@
-from pyrogram import Client
-from pyrogram.types import Message, CallbackQuery
+from typing import Optional
+
 from sqlalchemy import select, update, delete, and_
 
-from orm.engine import async_engine, async_session_factory
-from orm.models import Base, Users, Sessions, Accounts, Tasks
+from orm.engine import async_session_factory
+from orm.models import Users, Sessions, Accounts, Tasks
 from src.enum.last_state import State
-from src.models import SessionsPydantic, AccountsPydantic, TasksPydantic
+from src.pydantic.models import (
+    SessionsPydantic,
+    AccountsPydantic,
+    TasksPydantic
+)
 
 
 class AsyncCore:
 
     @staticmethod
-    async def create_tables():
-        async with async_engine.begin() as conn:
-            await conn.run_sync(Base.metadata.drop_all)
-            await conn.run_sync(Base.metadata.create_all)
-
-    @staticmethod
-    async def start(_: Client, message: Message):
+    async def start(
+            user_tg_id: int,
+            first_name: str,
+            last_name: Optional[str],
+    ):
+        """
+        Create a new user by telegram id, make session and state of session
+        :param user_tg_id: Current telegram user id
+        :param first_name: First name in telegram
+        :param last_name: Last name in telegram
+        :return: None
+        """
         async with async_session_factory() as session:
             user = await session.execute(
                 select(Users).where(
-                    Users.tg_id == message.chat.id
+                    Users.tg_id == user_tg_id
                 )
             )
             user = user.scalar_one_or_none()
             if not user:
                 user = Users(
-                    tg_id=message.chat.id,
-                    first_name=message.chat.first_name,
-                    last_name=message.chat.last_name
+                    tg_id=user_tg_id,
+                    first_name=first_name,
+                    last_name=last_name
                 )
                 session.add(user)
                 await session.flush()
@@ -52,15 +61,19 @@ class AsyncCore:
             await session.commit()
 
     @staticmethod
-    async def execute_current_state(user_tg_id: int) -> SessionsPydantic:
+    async def execute_current_state(
+            user_tg_id: int
+    ) -> SessionsPydantic:
         """
+        Execute current state of session. Need for FSM
+
         SELECT sessions.last_state
         FROM users
         INNER JOIN sessions ON user.id = sessions.user_id
         WHERE user.tg_id = $1::int;
 
-        :param user_tg_id:
-        :return:
+        :param user_tg_id: Current telegram user id
+        :return: SessionsPydantic
         """
         async with async_session_factory() as session:
             query = (
@@ -86,6 +99,15 @@ class AsyncCore:
             last_value: str = None,
             account_id: int = None
     ):
+        """
+        Update current session state
+
+        :param state: State.Enum
+        :param user_tg_id: Current telegram user id
+        :param last_value: Value input by user
+        :param account_id: Current account login in bot
+        :return: None
+        """
         async with async_session_factory() as session:
             user = await session.execute(
                 select(Users).where(
@@ -116,7 +138,15 @@ class AsyncCore:
             await session.commit()
 
     @staticmethod
-    async def execute_account(login_account: str) -> AccountsPydantic:
+    async def execute_account(
+            login_account: str
+    ) -> AccountsPydantic:
+        """
+        Execute account from db
+
+        :param login_account: login account input by user tg
+        :return: AccountsPydantic
+        """
         async with async_session_factory() as session:
             account = await session.execute(
                 select(Accounts).where(
@@ -131,7 +161,13 @@ class AsyncCore:
                 )
 
     @staticmethod
-    async def create_account(login_account: str, user_tg_id: int):
+    async def create_account(login_account: str):
+        """
+        Create new account in db
+
+        :param login_account: account name string
+        :return: None
+        """
         async with async_session_factory() as session:
             account = Accounts(login=login_account)
             session.add(account)
@@ -144,6 +180,13 @@ class AsyncCore:
             login_account: str,
             name_account: str
     ):
+        """
+        Update account for add name
+
+        :param login_account: login account in db
+        :param name_account: create name in current account
+        :return: None
+        """
         async with async_session_factory() as session:
             await session.execute(
                 update(Accounts)
@@ -160,6 +203,13 @@ class AsyncCore:
             name: str,
             user_tg_id: int
     ):
+        """
+        Create new task in db
+
+        :param name: task name in db
+        :param user_tg_id: current user telegram id
+        :return: None
+        """
         async with async_session_factory() as session:
             tg_state = await self.execute_current_state(user_tg_id)
             task = Tasks(
@@ -176,6 +226,8 @@ class AsyncCore:
             task_id: int = None
     ) -> TasksPydantic:
         """
+        Execute task from db by user telegram id and task id
+
         SELECT t.*
         FROM tasks AS t
         INNER JOIN session AS s
@@ -213,6 +265,12 @@ class AsyncCore:
     async def execute_tasks(
             user_tg_id: int
     ) -> list[TasksPydantic]:
+        """
+        Execute list tasks by user telegram id
+
+        :param user_tg_id: Current user telegram id
+        :return: list[TasksPydantic]
+        """
         async with async_session_factory() as session:
             query = (
                 select(Tasks).
@@ -236,13 +294,26 @@ class AsyncCore:
     @staticmethod
     async def update_tasks(
             task_id: int,
-            description: str
+            name: str,
+            description: str,
+            is_complete: bool
     ):
+        """
+        Update tasks
+
+        :param task_id: current task id
+        :param name: new task name
+        :param description: new description
+        :param is_complete: new state of task
+        :return: None
+        """
         async with async_session_factory() as session:
             await session.execute(
                 update(Tasks)
                 .values(
+                    name=name,
                     description=description,
+                    is_complete=is_complete
                 )
                 .where(Tasks.id == task_id)
             )
@@ -253,11 +324,17 @@ class AsyncCore:
     async def delete_task(
             task_id: int
     ):
+        """
+        Delete task from db
+
+        :param task_id: task id
+        :return: None
+        """
         async with async_session_factory() as session:
             await session.execute(
                 delete(Tasks)
                 .where(
-                    id=task_id,
+                    Tasks.id == task_id,
                 )
             )
             await session.commit()

@@ -1,23 +1,30 @@
-from typing import Annotated, Optional
+from typing import Optional
 
 from sqlalchemy import (
     ForeignKey,
     Boolean,
+    BigInteger
 )
-from sqlalchemy.orm import Mapped, mapped_column, relationship, DeclarativeBase
+from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase
 
 from src.enum.last_state import State
 
 
 class Base(DeclarativeBase):
-    pass
+
+    def __repr__(self):
+        cols = []
+        for idx, col in enumerate(self.__table__.columns.keys()):
+            cols.append(f"{col}={getattr(self, col)}")
+
+        return f"<{self.__class__.__name__} {', '.join(cols)}>"
 
 
 class Users(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    tg_id: Mapped[int] = mapped_column()
+    tg_id: Mapped[int] = mapped_column(BigInteger)
     first_name: Mapped[str] = mapped_column()
     last_name: Mapped[Optional[str]] = mapped_column()
 
