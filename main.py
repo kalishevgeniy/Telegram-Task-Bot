@@ -6,7 +6,7 @@ plugins = dict(
 )
 
 app = Client(
-    name="my_account",
+    name="TaskBot",
     plugins=plugins,
     api_id=settings.API_ID,
     api_hash=settings.API_HASH,
