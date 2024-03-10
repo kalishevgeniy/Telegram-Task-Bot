@@ -14,9 +14,10 @@ The principle of operation can be seen in the following diagram.
     cd Telegram-Task-Bot
     ```
 - Create `.env` file, add the database connection settings and telegram settings
-- Install `alembic` and do the migrations:
+- If the required migrations are missing in the database, they must be made:
     ```
-    pip install alembic
+    python3.10 -m venv .venv
+    pip install -r requirements.txt        
     alembic upgrade head
     ```
 - Create docker image:
