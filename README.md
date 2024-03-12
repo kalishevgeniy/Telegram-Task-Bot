@@ -16,7 +16,9 @@ The principle of operation can be seen in the following diagram.
 - Create `.env` file, add the database connection settings and telegram settings
 - If the required migrations are missing in the database, they must be made:
     ```
+    apt install python3.10 python3.10-venv
     python3.10 -m venv .venv
+    source .venv/bin/activate
     pip install -r requirements.txt        
     alembic upgrade head
     ```
